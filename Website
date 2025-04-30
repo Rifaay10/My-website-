@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>استثمر إلى ما لا نهائي</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #4fa3d1, #a7d8f7); /* التدرج الأزرق */
+            color: #ffffff;
+            direction: rtl; /* الكتابة من اليمين لليسار */
+        }
+        header {
+            text-align: center;
+            padding: 50px 0;
+        }
+        h1 {
+            font-size: 3em;
+            font-weight: bold;
+        }
+        .navigation {
+            display: flex;
+            justify-content: center;
+            background-color: #004a7c;
+            padding: 10px 0;
+        }
+        .navigation a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            margin: 0 15px;
+            transition: background-color 0.3s;
+        }
+        .navigation a:hover {
+            background-color: #0066cc;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #004a7c;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>استثمر إلى ما لا نهائي</h1>
+    </header>
+    
+    <div class="navigation">
+        <a href="#">الرئيسية</a>
+        <a href="#">عنّا</a>
+        <a href="#">اتصل بنا</a>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 جميع الحقوق محفوظة</p>
+    </footer>
+</body>
+</html>
