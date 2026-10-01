@@ -598,16 +598,13 @@
     let todayTransactions = JSON.parse(localStorage.getItem('ps_today_tx')) || [];
     let shiftArchive = JSON.parse(localStorage.getItem('ps_shift_archive')) || [];
 
-    // مزامنة البيانات للسيرفر
     function saveState() {
-        // حفظ محلي لضمان السرعة
         localStorage.setItem('ps_devices_state', JSON.stringify(devices));
         localStorage.setItem('ps_shift_total', shiftTotalEarnings.toString());
         localStorage.setItem('ps_today_tx', JSON.stringify(todayTransactions));
         localStorage.setItem('ps_shift_archive', JSON.stringify(shiftArchive));
         updateHistoryCounters();
 
-        // إرسال البيانات للسيرفر في الخلفية
         const dataToSync = {
             devices: devices,
             shiftTotalEarnings: shiftTotalEarnings,
@@ -625,34 +622,47 @@
             body: JSON.stringify(dataToSync)
         }).then(() => {
             syncBadge.className = 'sync-badge';
-            syncBadge.innerText = '☁️ تم الحفظ أونلاين';
+            syncBadge.innerText = '☁️️ تم الحفظ أونلاين';
         }).catch(e => {
             syncBadge.className = 'sync-badge syncing';
             syncBadge.innerText = '❌ خطأ في النت';
         });
     }
 
-    // استدعاء البيانات من السيرفر (للمتابعة من البيت)
+    // الدرع الواقي: تنظيف الداتا الجاية من فايربيز قبل رسمها
     function loadStateFromServer() {
         fetch(FIREBASE_DB_URL)
             .then(res => res.json())
             .then(data => {
                 if(data) {
                     let hasChanges = false;
-                    if(data.devices && JSON.stringify(data.devices) !== JSON.stringify(devices)) {
-                        // حماية الأجهزة من المصفوفات المفقودة
-                        devices = data.devices.map(d => ({...d, orders: d.orders || [], note: d.note || ''}));
-                        hasChanges = true;
+                    
+                    if(data.devices) {
+                        // حماية قوية: إجبار فايربيز يرجع الداتا كمصفوفة حتى لو كانت متلغبطة
+                        let serverDevices = Array.isArray(data.devices) ? data.devices : Object.values(data.devices);
+                        serverDevices = serverDevices.filter(d => d !== null);
+                        
+                        if(JSON.stringify(serverDevices) !== JSON.stringify(devices)) {
+                            devices = serverDevices.map(d => ({...d, orders: d.orders || [], note: d.note || ''}));
+                            hasChanges = true;
+                        }
                     }
+
                     if(data.shiftTotalEarnings !== undefined && data.shiftTotalEarnings !== shiftTotalEarnings) {
                         shiftTotalEarnings = data.shiftTotalEarnings;
                         hasChanges = true;
                     }
+
                     if(data.todayTransactions !== undefined) {
-                        todayTransactions = data.todayTransactions || [];
+                        let tx = Array.isArray(data.todayTransactions) ? data.todayTransactions : Object.values(data.todayTransactions);
+                        todayTransactions = tx.filter(t => t !== null);
+                        hasChanges = true;
                     }
+
                     if(data.shiftArchive !== undefined) {
-                        shiftArchive = data.shiftArchive || [];
+                        let arc = Array.isArray(data.shiftArchive) ? data.shiftArchive : Object.values(data.shiftArchive);
+                        shiftArchive = arc.filter(t => t !== null);
+                        hasChanges = true;
                     }
                     
                     if(hasChanges) {
@@ -666,22 +676,18 @@
 
     window.onload = function() {
         // حماية مبدئية عند التحميل
+        if (!Array.isArray(devices)) devices = defaultDevices;
         devices = devices.map(d => ({...d, note: d.note || '', orders: d.orders || []}));
+        
         renderDevices();
         startClock();
         updateHistoryCounters();
         
-        // سحب البيانات من السيرفر أول ما تفتح
         loadStateFromServer();
-
-        // تحديث عدادات الوقت كل ثانية
         setInterval(updateActiveTimers, 1000);
-        
-        // تفتيش على السيرفر كل 10 ثواني (عشان تتابع من البيت)
         setInterval(loadStateFromServer, 10000); 
     };
 
-    // حاسبة الوقت بالمبلغ
     function calculateTimeByAmount() {
         const amount = parseFloat(document.getElementById('calc-amount').value) || 0;
         const rate = parseFloat(document.getElementById('calc-rate').value) || 20;
@@ -699,7 +705,7 @@
     }
 
     function resetDevicesConfig() {
-        if(confirm("إعادة تعيين أسعار الأجهزة للوضع الافتراضي؟")) {
+        if(confirm("إعادة تعيين أسعار الأجهزة للوضع الافتراضي ومسح التعليقات؟")) {
             devices = JSON.parse(JSON.stringify(defaultDevices));
             saveState();
             renderDevices();
@@ -737,13 +743,20 @@
 
     function renderDevices() {
         const container = document.getElementById('devices-container');
+        if (!container) return;
+        
+        // حماية إضافية لو المتصفح خزن البيانات غلط
+        if (!Array.isArray(devices)) {
+            devices = JSON.parse(JSON.stringify(defaultDevices));
+        }
+
         container.innerHTML = '';
         let activeCount = 0;
 
         devices.forEach(dev => {
+            if (!dev) return;
             if(dev.status !== 'available') activeCount++;
             
-            // إضافة حماية المصفوفة هنا لمنع العطل
             let safeOrders = dev.orders || [];
             let totalOrderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
             
@@ -801,7 +814,7 @@
     function updateActiveTimers() {
         let stateModified = false;
         devices.forEach(dev => {
-            if(dev.status === 'occupied' || dev.status === 'timeup') {
+            if(dev && (dev.status === 'occupied' || dev.status === 'timeup')) {
                 const elapsed = getElapsedSeconds(dev);
                 if(dev.limitType === 'fixed' && elapsed >= dev.limitSeconds && !dev.alarmTriggered) {
                     dev.status = 'timeup';
@@ -879,7 +892,7 @@
         const qty = parseInt(document.getElementById('modal-product-qty').value) || 1;
         const dev = devices.find(d => d.id === id);
         
-        if (!dev.orders) dev.orders = [];
+        if (!Array.isArray(dev.orders)) dev.orders = [];
         dev.orders.push({ name, price, qty });
         
         saveState(); closeModal('order-modal'); logActivity(`☕ أضيف لـ ${dev.name}: ${name}`); renderDevices();
@@ -907,7 +920,7 @@
         let timeCost = (elapsed / 3600) * currentHourlyRate;
         if(elapsed > 0 && timeCost < 5) timeCost = 5.00;
         
-        let safeOrders = dev.orders || [];
+        let safeOrders = Array.isArray(dev.orders) ? dev.orders : [];
         let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
         
         document.getElementById('inv-start').innerText = new Date(dev.startTimestamp).toLocaleTimeString('ar-EG');
@@ -925,7 +938,7 @@
         let timeCost = (elapsed / 3600) * (dev.playMode === 'single' ? dev.rateSingle : dev.rateMulti);
         if(elapsed > 0 && timeCost < 5) timeCost = 5.00;
         
-        let safeOrders = dev.orders || [];
+        let safeOrders = Array.isArray(dev.orders) ? dev.orders : [];
         let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
         let total = timeCost + orderCost;
 
@@ -940,7 +953,6 @@
     function resetShift() {
         if(todayTransactions.length === 0 && shiftTotalEarnings === 0) return alert('الوردية فارغة!');
         
-        // إدخال كلمة سر المدير لتقفيل الوردية
         const pass = prompt('يرجى إدخال كلمة المرور لتقفيل الوردية:');
         if (pass !== 'Madh771979') {
             alert('كلمة المرور خاطئة! لم يتم تقفيل الوردية.');
