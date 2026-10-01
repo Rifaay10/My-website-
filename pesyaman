@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة إدارة مقهى البلايستيشن - أونلاين (Live Sync)</title>
+    <style>
+        :root {
+            --bg-main: #0f172a; --bg-card: #1e293b; --bg-input: #334155; --border-color: #475569;
+            --text-main: #f8fafc; --text-muted: #94a3b8; --primary: #6366f1; --primary-hover: #4f46e5;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #0ea5e9;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 20px; min-height: 100vh; }
+
+        .app-container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 350px; gap: 25px; }
+        @media (max-width: 1024px) { .app-container { grid-template-columns: 1fr; } }
+
+        header { grid-column: 1 / -1; background: linear-gradient(135deg, #1e1b4b, #311042); border: 1px solid #4338ca; padding: 20px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); margin-bottom: 10px; flex-wrap: wrap; gap: 15px; }
+        .header-title h1 { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 5px; background: linear-gradient(to left, #fff, #c7d2fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-title p { color: var(--text-muted); font-size: 14px; }
+        .sync-badge { background: rgba(16,185,129,0.2); color: #34d399; padding: 4px 10px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; }
+        .sync-badge.syncing { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .stats-summary { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .stat-box { background: rgba(255,255,255,0.05); padding: 10px 18px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.1); min-width: 120px; }
+        .stat-box span { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-box strong { font-size: 18px; color: #fff; }
+        .stat-box strong.highlight { color: #34d399; }
+
+        .main-content { display: flex; flex-direction: column; gap: 20px; }
+        .section-title { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; color: #e2e8f0; }
+        .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+
+        .device-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .device-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -8px rgba(99,102,241,0.2); border-color: #6366f1; }
+        .device-card.time-up { border: 2px solid var(--danger); animation: pulse-border 1.5s infinite; background: linear-gradient(180deg, var(--bg-card) 0%, rgba(239,68,68,0.15) 100%); }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+
+        .device-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .device-info h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .device-type { font-size: 12px; padding: 2px 8px; background-color: var(--bg-input); border-radius: 20px; color: var(--text-muted); display: inline-block; }
+        .status-badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
+        .status-available { background-color: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+        .status-occupied { background-color: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+        .status-paused { background-color: rgba(245,158,11,0.15); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+        .status-timeup { background-color: var(--danger); color: #fff; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        .timer-display { font-size: 32px; font-family: monospace; font-weight: 700; text-align: center; margin: 15px 0; color: #fff; letter-spacing: 1px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
+        .device-card.time-up .timer-display { color: #fca5a5; background: rgba(239,68,68,0.2); }
+        .session-details { font-size: 13px; color: var(--text-muted); margin-bottom: 15px; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 8px; }
+        .session-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .session-row .val { color: #e2e8f0; font-weight: 500; }
+
+        .device-note { margin-bottom: 15px; }
+        .device-note textarea { width: 100%; background: rgba(255,255,255,0.05); border: 1px dashed var(--border-color); color: var(--text-main); border-radius: 8px; padding: 8px 10px; font-size: 12px; resize: vertical; min-height: 40px; transition: all 0.3s ease; }
+        .device-note textarea:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.2); }
+
+        .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn { padding: 10px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-success { background-color: var(--success); color: white; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-warning { background-color: var(--warning); color: #0f172a; }
+        .btn-info { background-color: var(--info); color: white; }
+        .btn-secondary { background-color: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-full { grid-column: 1 / -1; }
+
+        .sidebar { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 20px; height: fit-content; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .product-list { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; padding-left: 5px; }
+        .product-item { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-main); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color); }
+        .product-info h4 { font-size: 14px; font-weight: 600; }
+        .product-info p { font-size: 12px; color: var(--text-muted); }
+        .btn-add-fast { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 20px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 480px; padding: 25px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        .modal-content.large-modal { max-width: 850px; }
+        .modal-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { font-size: 20px; font-weight: 700; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 14px; margin-bottom: 6px; color: var(--text-muted); }
+        .form-control { width: 100%; padding: 10px; background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 14px; }
+        .form-control:focus { outline: none; border-color: var(--primary); }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+        .invoice-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; }
+        .invoice-line { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+        .invoice-total { display: flex; justify-content: space-between; font-weight: 700; font-size: 18px; color: #34d399; padding-top: 10px; border-top: 1px solid var(--border-color); margin-top: 5px; }
+
+        .recent-actions { display: flex; flex-direction: column; gap: 8px; font-size: 12px; max-height: 180px; overflow-y: auto; }
+        .action-log { background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border-right: 3px solid var(--primary); }
+
+        .tabs-header { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .tab-btn { background: transparent; border: none; color: var(--text-muted); padding: 8px 16px; font-size: 15px; font-weight: 600; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: right; margin-top: 10px; }
+        .history-table th, .history-table td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .badge-type { padding: 3px 8px; border-radius: 12px; font-size: 11px; background: rgba(99,102,241,0.2); color: #818cf8; }
+        .archive-card { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <div class="header-title">
+            <h1>PES YA MAN-PS</h1>
+            <p id="current-date-time">جاري تحميل التوقيت...</p>
+            <div id="sync-status" class="sync-badge">☁️ متصل بالسيرفر</div>
+        </div>
+        <div class="stats-summary">
+            <div class="stat-box"><span>الأجهزة النشطة</span><strong id="active-count">0 / 6</strong></div>
+            <div class="stat-box"><span>إجمالي دخل الوردية</span><strong id="shift-total" class="highlight">0.00 ج.م</strong></div>
+            <button class="btn btn-info" onclick="openHistoryModal()" style="height: 100%; padding: 12px 20px;">📜 سجل اليوم والأرشيف</button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="section-title" style="justify-content: space-between;">
+            <div><span>🎮</span> حالة الأجهزة وحجوزات الصالة والـ VIP</div>
+            <button class="btn btn-secondary" onclick="resetDevicesConfig()" style="padding: 6px 12px; font-size: 11px;">⚠️ إعادة ضبط أسعار الأجهزة</button>
+        </div>
+        <div class="devices-grid" id="devices-container"></div>
+    </main>
+
+    <aside class="sidebar">
+        <div>
+            <div class="section-title" style="margin-bottom: 15px;"><span>☕</span> بوفيه ومبيعات الكافيه السريعة</div>
+            <div class="product-list">
+                <div class="product-item"><div class="product-info"><h4>شاي فتلة</h4><p>10.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('شاي فتلة', 10)">+ إضافة</button></div>
+                <div class="product-item"><div class="product-info"><h4>قهوة تركي</h4><p>20.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('قهوة تركي', 20)">+ إضافة</button></div>
+                <div class="product-item"><div class="product-info"><h4>كوفي ميكس</h4><p>15.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('كوفي ميكس', 15)">+ إضافة</button></div>
+                <div class="product-item"><div class="product-info"><h4>بيبسي كانز</h4><p>20.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('بيبسي كانز', 20)">+ إضافة</button></div>
+                <div class="product-item"><div class="product-info"><h4>إندومي صغير</h4><p>15.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('إندومي صغير', 15)">+ إضافة</button></div>
+                <div class="product-item"><div class="product-info"><h4>إندومي كبير</h4><p>20.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('إندومي كبير', 20)">+ إضافة</button></div>
+                <div class="product-item"><div class="product-info"><h4>إندومي 2*1</h4><p>25.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('إندومي 2*1', 25)">+ إضافة</button></div>
+                <div class="product-item"><div class="product-info"><h4>شيبسي عائلي</h4><p>10.00 ج.م</p></div><button class="btn btn-primary btn-add-fast" onclick="triggerFastOrder('شيبسي عائلي', 10)">+ إضافة</button></div>
+            </div>
+
+            <div class="section-title" style="margin-bottom: 10px; margin-top: 15px; font-size: 15px;"><span>➕</span> صنف مخصص (سريع)</div>
+            <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+                <input type="text" id="custom-fast-name" class="form-control" placeholder="اسم الصنف" style="flex: 2; padding: 8px; font-size: 12px;">
+                <input type="number" id="custom-fast-price" class="form-control" placeholder="السعر" style="flex: 1; padding: 8px; font-size: 12px;" min="1">
+                <button class="btn btn-success btn-add-fast" onclick="addCustomFastOrder()" style="flex: 1;">إضافة</button>
+            </div>
+
+            <div class="section-title" style="margin-bottom: 10px; margin-top: 15px; font-size: 15px;"><span>⏱</span> حاسبة الوقت بالمبلغ</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="calc-amount" class="form-control" placeholder="المبلغ (جنيه)" style="flex: 1; padding: 8px; font-size: 12px;" min="1" oninput="calculateTimeByAmount()">
+                    <select id="calc-rate" class="form-control" style="flex: 1; padding: 8px; font-size: 12px;" onchange="calculateTimeByAmount()">
+                        <option value="20">PS4 - فردي (20)</option>
+                        <option value="30">PS4 - زوجي (30)</option>
+                        <option value="30">PS5 - فردي (30)</option>
+                        <option value="40">PS5 - زوجي (40)</option>
+                    </select>
+                </div>
+                <div id="calc-result" style="text-align: center; font-weight: bold; color: #34d399; font-size: 14px;">المدة: 0 دقيقة</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title" style="margin-bottom: 10px;"><span>📋</span> آخر العمليات الحية</div>
+            <div class="recent-actions" id="activity-logs">
+                <div class="action-log">تم تشغيل النظام وجاهز لتسجيل الحركات.</div>
+            </div>
+        </div>
+
+        <button class="btn btn-secondary btn-full" onclick="resetShift()">🔒 تقفيل وحفظ الوردية الحالية في الأرشيف</button>
+    </aside>
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="start-modal">
+    <div class="modal-content">
+        <div class="modal-header"><h2 id="start-modal-title">بدء جلسة جديدة</h2></div>
+        <input type="hidden" id="start-device-id">
+        <div class="form-group">
+            <label>وضع اللعب</label>
+            <select class="form-control" id="play-mode">
+                <option value="single">فردي (Single)</option>
+                <option value="multi">زوجي (Multi)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>نوع الحساب</label>
+            <select class="form-control" id="time-limit-type" onchange="toggleFixedTimeInput()">
+                <option value="open">وقت مفتوح (Open Time)</option>
+                <option value="fixed">وقت محدد (Fixed Limit)</option>
+            </select>
+        </div>
+        <div class="form-group" id="fixed-time-group" style="display: none;">
+            <label>المدة المحددة (بالدقائق)</label>
+            <input type="number" class="form-control" id="fixed-minutes" value="60" min="1">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('start-modal')">إلغاء</button>
+            <button class="btn btn-success" onclick="confirmStartSession()">ابدأ الوقت الآن 🚀</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="order-modal">
+    <div class="modal-content">
+        <div class="modal-header"><h2>إضافة طلبات وضيافة للجهاز</h2></div>
+        <input type="hidden" id="order-device-id">
+        <div class="form-group">
+            <label>اختر المنتج من البوفيه</label>
+            <select class="form-control" id="modal-product-select" onchange="toggleCustomOrderInput()">
+                <option value="شاي فتلة|10">شاي فتلة - 10 ج.م</option>
+                <option value="قهوة تركي|20">قهوة تركي - 20 ج.م</option>
+                <option value="كوفي ميكس|15">كوفي ميكس - 15 ج.م</option>
+                <option value="بيبسي كانز|20">بيبسي كانز - 20 ج.م</option>
+                <option value="إندومي صغير|15">إندومي صغير - 15 ج.م</option>
+                <option value="إندومي كبير|20">إندومي كبير - 20 ج.م</option>
+                <option value="إندومي 2*1|25">إندومي 2*1 - 25 ج.م</option>
+                <option value="شيبسي عائلي|10">شيبسي عائلي - 10 ج.م</option>
+                <option value="custom|0" style="color: var(--primary); font-weight: bold;">-- بند مخصص (إدخال يدوي) --</option>
+            </select>
+        </div>
+        <div class="form-group" id="custom-order-group" style="display: none; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: 10px;">
+            <label>اسم البند المخصص</label>
+            <input type="text" class="form-control" id="custom-modal-name" placeholder="اكتب اسم الصنف هنا">
+            <label style="margin-top: 10px;">سعر البند</label>
+            <input type="number" class="form-control" id="custom-modal-price" placeholder="السعر" min="1">
+        </div>
+        <div class="form-group">
+            <label>الكمية</label>
+            <input type="number" class="form-control" id="modal-product-qty" value="1" min="1">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('order-modal')">إلغاء</button>
+            <button class="btn btn-primary" onclick="confirmAddOrder()">إضافة للمستند 🛒</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="checkout-modal">
+    <div class="modal-content">
+        <div class="modal-header"><h2 id="checkout-title">حساب وتجنيب الشيك</h2></div>
+        <input type="hidden" id="checkout-device-id">
+        <div class="invoice-box">
+            <div class="invoice-line"><span>وقت البدء:</span><span id="inv-start">-</span></div>
+            <div class="invoice-line"><span>الوقت المستغرق:</span><span id="inv-duration">-</span></div>
+            <div class="invoice-line"><span>حساب الوقت واللعب:</span><span id="inv-time-cost">0.00 ج.م</span></div>
+            <div class="invoice-line"><span>حساب البوفيه والطلبات:</span><span id="inv-order-cost">0.00 ج.م</span></div>
+            <div class="invoice-total"><span>الإجمالي الكلي:</span><span id="inv-grand-total">0.00 ج.م</span></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('checkout-modal')">رجوع وتعديل</button>
+            <button class="btn btn-danger" onclick="confirmCheckout()">إنهاء الحجز وقبض المبلغ 💰</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="history-modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2>📊 سجل الحركات اليومية وأرشيف الورديات السابقة</h2>
+            <button class="btn btn-secondary" style="padding: 6px 12px;" onclick="closeModal('history-modal')">✕ إغلاق</button>
+        </div>
+        <div class="tabs-header">
+            <button class="tab-btn active" onclick="switchTab('today-tab', this)">سجل حركات اليوم (<span id="today-tx-count">0</span>)</button>
+            <button class="tab-btn" onclick="switchTab('archive-tab', this)">أرشيف الأيام والورديات السابقة (<span id="archive-shift-count">0</span>)</button>
+        </div>
+        <div id="today-tab" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="color: var(--text-muted); font-size: 13px;">تفاصيل الفواتير خلال الوردية الحالية:</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="history-table">
+                    <thead><tr><th>الوقت</th><th>النوع / الجهاز</th><th>التفاصيل والمشروبات</th><th>المدة</th><th>المبلغ المحصل</th></tr></thead>
+                    <tbody id="today-history-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div id="archive-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span style="color: var(--text-muted); font-size: 13px;">جميع الورديات التي تم تقفيلها وحفظها:</span>
+            </div>
+            <div id="archive-list-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const FIREBASE_DB_URL = "https://pes-ya-man-default-rtdb.europe-west1.firebasedatabase.app/ps_data.json";
+
+    const defaultDevices = [
+        { id: 1, name: 'جهاز 1', type: 'PS4', rateSingle: 20, rateMulti: 30, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' },
+        { id: 2, name: 'جهاز 2', type: 'PS4', rateSingle: 20, rateMulti: 30, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' },
+        { id: 3, name: 'جهاز 3', type: 'PS4', rateSingle: 20, rateMulti: 30, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' },
+        { id: 4, name: 'جهاز 4', type: 'PS4', rateSingle: 20, rateMulti: 30, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' },
+        { id: 5, name: 'جهاز 5 (VIP)', type: 'PS5', rateSingle: 30, rateMulti: 40, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' },
+        { id: 6, name: 'جهاز 6 (VIP)', type: 'PS5', rateSingle: 30, rateMulti: 40, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' }
+    ];
+
+    // قراءة آمنة: لو الداتا المخزنة تالفة بنتجاهلها بدل ما الصفحة تقف
+    function safeLoad(key, fallback) {
+        try {
+            const v = JSON.parse(localStorage.getItem(key));
+            return v === null || v === undefined ? fallback : v;
+        } catch (e) { return fallback; }
+    }
+
+    let devices = safeLoad('ps_devices_state', defaultDevices);
+    if (!Array.isArray(devices) || !devices.length) devices = JSON.parse(JSON.stringify(defaultDevices));
+    let shiftTotalEarnings = parseFloat(localStorage.getItem('ps_shift_total')) || 0;
+    let todayTransactions = safeLoad('ps_today_tx', []);
+    let shiftArchive = safeLoad('ps_shift_archive', []);
+    if (!Array.isArray(todayTransactions)) todayTransactions = [];
+    if (!Array.isArray(shiftArchive)) shiftArchive = [];
+
+    // متغيرات منع التعارض بين الحفظ والتحميل
+    let pendingSaves = 0;
+    let lastLocalChange = 0;
+
+    function saveState() {
+        lastLocalChange = Date.now();
+        pendingSaves++;
+
+        localStorage.setItem('ps_devices_state', JSON.stringify(devices));
+        localStorage.setItem('ps_shift_total', shiftTotalEarnings.toString());
+        localStorage.setItem('ps_today_tx', JSON.stringify(todayTransactions));
+        localStorage.setItem('ps_shift_archive', JSON.stringify(shiftArchive));
+        updateHistoryCounters();
+
+        const dataToSync = { devices, shiftTotalEarnings, todayTransactions, shiftArchive };
+
+        const syncBadge = document.getElementById('sync-status');
+        syncBadge.className = 'sync-badge syncing';
+        syncBadge.innerText = '⏳ جاري الحفظ...';
+
+        fetch(FIREBASE_DB_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataToSync)
+        }).then(() => {
+            syncBadge.className = 'sync-badge';
+            syncBadge.innerText = '☁️ تم الحفظ أونلاين';
+        }).catch(() => {
+            syncBadge.className = 'sync-badge syncing';
+            syncBadge.innerText = '❌ خطأ في النت';
+        }).finally(() => {
+            pendingSaves--;
+            lastLocalChange = Date.now();
+        });
+    }
+
+    // تحويل أي داتا جاية من فايربيز لمصفوفة سليمة (والفاضي يبقى [])
+    function toArr(x) {
+        if (!x) return [];
+        return (Array.isArray(x) ? x : Object.values(x)).filter(i => i !== null);
+    }
+
+    function loadStateFromServer() {
+        // لا تحمّل لو فيه حفظ شغال أو تعديل حصل من أقل من 5 ثواني
+        if (pendingSaves > 0) return;
+        if (Date.now() - lastLocalChange < 5000) return;
+
+        // لا تحمّل لو المستخدم بيكتب أو فاتح نافذة
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.tagName === 'SELECT')) return;
+        if (document.querySelector('.modal-overlay.active')) return;
+
+        fetch(FIREBASE_DB_URL)
+            .then(res => res.json())
+            .then(data => {
+                if (!data) return;
+                // لو حصل تعديل أثناء انتظار الرد، تجاهل الرد
+                if (pendingSaves > 0 || Date.now() - lastLocalChange < 5000) return;
+
+                let changed = false;
+
+                const serverDevices = toArr(data.devices)
+                    .map(d => ({ ...d, orders: toArr(d.orders), note: d.note || '' }));
+                if (serverDevices.length && JSON.stringify(serverDevices) !== JSON.stringify(devices)) {
+                    devices = serverDevices;
+                    changed = true;
+                }
+
+                const serverTotal = data.shiftTotalEarnings || 0;
+                if (serverTotal !== shiftTotalEarnings) {
+                    shiftTotalEarnings = serverTotal;
+                    changed = true;
+                }
+
+                const serverTx = toArr(data.todayTransactions);
+                if (JSON.stringify(serverTx) !== JSON.stringify(todayTransactions)) {
+                    todayTransactions = serverTx;
+                    changed = true;
+                }
+
+                const serverArc = toArr(data.shiftArchive);
+                if (JSON.stringify(serverArc) !== JSON.stringify(shiftArchive)) {
+                    shiftArchive = serverArc;
+                    changed = true;
+                }
+
+                if (changed) {
+                    localStorage.setItem('ps_devices_state', JSON.stringify(devices));
+                    localStorage.setItem('ps_shift_total', shiftTotalEarnings.toString());
+                    localStorage.setItem('ps_today_tx', JSON.stringify(todayTransactions));
+                    localStorage.setItem('ps_shift_archive', JSON.stringify(shiftArchive));
+                    renderDevices();
+                    updateHistoryCounters();
+                }
+            }).catch(() => console.log('تعذر الاتصال بالسيرفر'));
+    }
+
+    window.onload = function() {
+        if (!Array.isArray(devices)) devices = defaultDevices;
+        devices = devices.map(d => ({...d, note: d.note || '', orders: d.orders || []}));
+
+        renderDevices();
+        startClock();
+        updateHistoryCounters();
+
+        loadStateFromServer();
+        setInterval(updateActiveTimers, 1000);
+        setInterval(loadStateFromServer, 10000);
+    };
+
+    function calculateTimeByAmount() {
+        const amount = parseFloat(document.getElementById('calc-amount').value) || 0;
+        const rate = parseFloat(document.getElementById('calc-rate').value) || 20;
+        if (amount <= 0) {
+            document.getElementById('calc-result').innerText = `المدة: 0 دقيقة`;
+            return;
+        }
+        const totalMinutes = Math.floor((amount / rate) * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        let resultText = '';
+        if (hours > 0) resultText += `${hours} ساعة و `;
+        resultText += `${mins} دقيقة`;
+        document.getElementById('calc-result').innerText = `المدة: ${resultText}`;
+    }
+
+    function resetDevicesConfig() {
+        if (confirm("إعادة تعيين أسعار الأجهزة للوضع الافتراضي ومسح التعليقات؟")) {
+            devices = JSON.parse(JSON.stringify(defaultDevices));
+            saveState();
+            renderDevices();
+        }
+    }
+
+    function startClock() {
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('current-date-time').innerText = 'توقيت المحل: ' + now.toLocaleTimeString('ar-EG') + ' | ' + now.toLocaleDateString('ar-EG');
+        }, 1000);
+    }
+
+    function updateHistoryCounters() {
+        document.getElementById('today-tx-count').innerText = todayTransactions.length;
+        document.getElementById('archive-shift-count').innerText = shiftArchive.length;
+    }
+
+    function getElapsedSeconds(dev) {
+        if (!dev.startTimestamp) return 0;
+        const now = Date.now();
+        if (dev.status === 'paused' && dev.pauseStartTimestamp) {
+            return Math.floor((dev.pauseStartTimestamp - dev.startTimestamp - dev.pausedDuration) / 1000);
+        }
+        return Math.floor((now - dev.startTimestamp - dev.pausedDuration) / 1000);
+    }
+
+    function updateDeviceNote(id, value) {
+        const dev = devices.find(d => d.id === id);
+        if (dev) {
+            dev.note = value;
+            saveState();
+        }
+    }
+
+    function renderDevices() {
+        const container = document.getElementById('devices-container');
+        if (!container) return;
+
+        if (!Array.isArray(devices)) {
+            devices = JSON.parse(JSON.stringify(defaultDevices));
+        }
+
+        container.innerHTML = '';
+        let activeCount = 0;
+
+        devices.forEach(dev => {
+            if (!dev) return;
+            if (dev.status !== 'available') activeCount++;
+
+            let safeOrders = dev.orders || [];
+            let totalOrderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            let badgeClass = 'status-available', badgeText = 'متاح للعب', cardExtraClass = '';
+
+            if (dev.status === 'occupied') { badgeClass = 'status-occupied'; badgeText = 'مشغول حالياً'; }
+            if (dev.status === 'paused') { badgeClass = 'status-paused'; badgeText = 'إيقاف مؤقت'; }
+            if (dev.status === 'timeup') { badgeClass = 'status-timeup'; badgeText = '⏰ انتهى الوقت!'; cardExtraClass = 'time-up'; }
+
+            let elapsed = getElapsedSeconds(dev);
+            let timeString = formatSeconds(Math.max(0, elapsed));
+            let rateText = dev.playMode === 'single' ? `${dev.rateSingle} ج/س` : `${dev.rateMulti} ج/س`;
+
+            let cardHtml = `
+                <div class="device-card ${cardExtraClass}" id="card-${dev.id}">
+                    <div class="device-header">
+                        <div class="device-info">
+                            <h3>${dev.name}</h3><span class="device-type">${dev.type} - ${rateText}</span>
+                        </div>
+                        <span class="status-badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                    <div class="timer-display">${timeString}</div>
+                    <div class="session-details">
+                        <div class="session-row"><span>الوضع:</span><span class="val">${dev.status !== 'available' ? (dev.playMode === 'single' ? 'فردي 🎮' : 'زوجي 🎮🎮') : '-'}</span></div>
+                        <div class="session-row"><span>الطلبات:</span><span class="val">${totalOrderCost.toFixed(2)} ج.م</span></div>
+                    </div>
+                    <div class="device-note">
+                        <textarea placeholder="ملاحظات..." onchange="updateDeviceNote(${dev.id}, this.value)">${dev.note || ''}</textarea>
+                    </div>
+                    <div class="card-actions">
+            `;
+
+            if (dev.status === 'available') {
+                cardHtml += `<button class="btn btn-success btn-full" onclick="openStartModal(${dev.id})">تشغيل وإيجار</button>`;
+            } else if (dev.status === 'occupied') {
+                cardHtml += `
+                    <button class="btn btn-warning" onclick="pauseDevice(${dev.id})">⏸ مؤقت</button>
+                    <button class="btn btn-secondary" onclick="openOrderModal(${dev.id})">☕ طلبات</button>
+                    <button class="btn btn-danger btn-full" style="margin-top:8px;" onclick="openCheckoutModal(${dev.id})">🛑 إنهاء وحساب</button>
+                `;
+            } else if (dev.status === 'paused' || dev.status === 'timeup') {
+                cardHtml += `
+                    <button class="btn btn-success" onclick="resumeDevice(${dev.id})">▶️ استئناف</button>
+                    <button class="btn btn-secondary" onclick="openOrderModal(${dev.id})">☕ طلبات</button>
+                    <button class="btn btn-danger btn-full" style="margin-top:8px;" onclick="openCheckoutModal(${dev.id})">🛑 إنهاء وحساب</button>
+                `;
+            }
+            cardHtml += `</div></div>`;
+            container.innerHTML += cardHtml;
+        });
+        document.getElementById('active-count').innerText = `${activeCount} / ${devices.length}`;
+        document.getElementById('shift-total').innerText = `${shiftTotalEarnings.toFixed(2)} ج.م`;
+    }
+
+    function updateActiveTimers() {
+        let stateModified = false;
+        devices.forEach(dev => {
+            if (dev && (dev.status === 'occupied' || dev.status === 'timeup')) {
+                const elapsed = getElapsedSeconds(dev);
+                if (dev.limitType === 'fixed' && elapsed >= dev.limitSeconds && !dev.alarmTriggered) {
+                    dev.status = 'timeup';
+                    dev.alarmTriggered = true;
+                    dev.pauseStartTimestamp = Date.now();
+                    stateModified = true;
+                    playAlarmSound();
+                    logActivity(`⏰ انتهى الوقت المحدد لـ ${dev.name}!`);
+                }
+                const card = document.getElementById(`card-${dev.id}`);
+                if (card) card.querySelector('.timer-display').innerText = formatSeconds(Math.max(0, elapsed));
+            }
+        });
+        if (stateModified) { saveState(); renderDevices(); }
+    }
+
+    function openStartModal(id) {
+        document.getElementById('start-device-id').value = id;
+        document.getElementById('start-modal-title').innerText = `بدء جلسة لـ ${devices.find(d => d.id === id).name}`;
+        openModal('start-modal');
+    }
+
+    function toggleFixedTimeInput() {
+        document.getElementById('fixed-time-group').style.display = document.getElementById('time-limit-type').value === 'fixed' ? 'block' : 'none';
+    }
+
+    function confirmStartSession() {
+        const id = parseInt(document.getElementById('start-device-id').value);
+        const mode = document.getElementById('play-mode').value;
+        const limitType = document.getElementById('time-limit-type').value;
+        const dev = devices.find(d => d.id === id);
+
+        dev.status = 'occupied'; dev.playMode = mode; dev.limitType = limitType;
+        dev.startTimestamp = Date.now(); dev.pausedDuration = 0; dev.pauseStartTimestamp = null;
+        dev.orders = []; dev.alarmTriggered = false;
+
+        if (limitType === 'fixed') dev.limitSeconds = (parseInt(document.getElementById('fixed-minutes').value) || 60) * 60;
+
+        saveState(); closeModal('start-modal'); logActivity(`🏁 تم فتح ${dev.name}`); renderDevices();
+    }
+
+    function pauseDevice(id) {
+        const dev = devices.find(d => d.id === id);
+        dev.status = 'paused'; dev.pauseStartTimestamp = Date.now();
+        saveState(); logActivity(`⏸️ تم إيقاف ${dev.name}`); renderDevices();
+    }
+
+    function resumeDevice(id) {
+        const dev = devices.find(d => d.id === id);
+        if (dev.pauseStartTimestamp) { dev.pausedDuration += (Date.now() - dev.pauseStartTimestamp); dev.pauseStartTimestamp = null; }
+        if (dev.status === 'timeup') { dev.limitType = 'open'; dev.alarmTriggered = false; }
+        dev.status = 'occupied';
+        saveState(); logActivity(`▶️ تم استئناف ${dev.name}`); renderDevices();
+    }
+
+    function openOrderModal(id) {
+        document.getElementById('order-device-id').value = id; openModal('order-modal'); toggleCustomOrderInput();
+    }
+
+    function toggleCustomOrderInput() {
+        document.getElementById('custom-order-group').style.display = document.getElementById('modal-product-select').value.startsWith('custom') ? 'block' : 'none';
+    }
+
+    function confirmAddOrder() {
+        const id = parseInt(document.getElementById('order-device-id').value);
+        const selectVal = document.getElementById('modal-product-select').value;
+        let name, price;
+        if (selectVal.startsWith('custom')) {
+            name = document.getElementById('custom-modal-name').value.trim();
+            price = parseFloat(document.getElementById('custom-modal-price').value);
+            if (!name || isNaN(price) || price <= 0) return alert("إدخال غير صحيح!");
+        } else {
+            [name, price] = selectVal.split('|'); price = parseFloat(price);
+        }
+        const qty = parseInt(document.getElementById('modal-product-qty').value) || 1;
+        const dev = devices.find(d => d.id === id);
+
+        if (!Array.isArray(dev.orders)) dev.orders = [];
+        dev.orders.push({ name, price, qty });
+
+        saveState(); closeModal('order-modal'); logActivity(`☕ أضيف لـ ${dev.name}: ${name}`); renderDevices();
+    }
+
+    function triggerFastOrder(name, price) {
+        shiftTotalEarnings += price;
+        todayTransactions.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('ar-EG'), device: 'مبيعات الكاشير', details: name, duration: '-', amount: price });
+        saveState(); renderDevices(); logActivity(`💰 بيع سريع: ${name}`);
+    }
+
+    function addCustomFastOrder() {
+        const name = document.getElementById('custom-fast-name').value.trim();
+        const price = parseFloat(document.getElementById('custom-fast-price').value);
+        if (!name || isNaN(price) || price <= 0) return alert("إدخال غير صحيح!");
+        triggerFastOrder(name, price);
+        document.getElementById('custom-fast-name').value = ''; document.getElementById('custom-fast-price').value = '';
+    }
+
+    function openCheckoutModal(id) {
+        const dev = devices.find(d => d.id === id);
+        document.getElementById('checkout-device-id').value = id;
+        const elapsed = getElapsedSeconds(dev);
+        let currentHourlyRate = dev.playMode === 'single' ? dev.rateSingle : dev.rateMulti;
+        let timeCost = (elapsed / 3600) * currentHourlyRate;
+        if (elapsed > 0 && timeCost < 5) timeCost = 5.00;
+
+        let safeOrders = Array.isArray(dev.orders) ? dev.orders : [];
+        let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+        document.getElementById('inv-start').innerText = new Date(dev.startTimestamp).toLocaleTimeString('ar-EG');
+        document.getElementById('inv-duration').innerText = formatSeconds(Math.max(0, elapsed));
+        document.getElementById('inv-time-cost').innerText = `${timeCost.toFixed(2)} ج.م`;
+        document.getElementById('inv-order-cost').innerText = `${orderCost.toFixed(2)} ج.م`;
+        document.getElementById('inv-grand-total').innerText = `${(timeCost + orderCost).toFixed(2)} ج.م`;
+        openModal('checkout-modal');
+    }
+
+    function confirmCheckout() {
+        const id = parseInt(document.getElementById('checkout-device-id').value);
+        const dev = devices.find(d => d.id === id);
+        const elapsed = getElapsedSeconds(dev);
+        let timeCost = (elapsed / 3600) * (dev.playMode === 'single' ? dev.rateSingle : dev.rateMulti);
+        if (elapsed > 0 && timeCost < 5) timeCost = 5.00;
+
+        let safeOrders = Array.isArray(dev.orders) ? dev.orders : [];
+        let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        let total = timeCost + orderCost;
+
+        shiftTotalEarnings += total;
+        let detailsStr = `لعب (${dev.playMode === 'single' ? 'فردي' : 'زوجي'})` + (safeOrders.length ? ` | طلبات` : '');
+        todayTransactions.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('ar-EG'), device: dev.name, details: detailsStr, duration: formatSeconds(Math.max(0, elapsed)), amount: total });
+
+        dev.status = 'available'; dev.startTimestamp = null; dev.pausedDuration = 0; dev.pauseStartTimestamp = null; dev.orders = []; dev.alarmTriggered = false;
+        saveState(); closeModal('checkout-modal'); renderDevices(); logActivity(`💵 غادر عميل ${dev.name} ودفع ${total.toFixed(2)}`);
+    }
+
+    function resetShift() {
+        if (todayTransactions.length === 0 && shiftTotalEarnings === 0) return alert('الوردية فارغة!');
+
+        const pass = prompt('يرجى إدخال كلمة المرور لتقفيل الوردية:');
+        if (pass !== 'Madh771979') {
+            alert('كلمة المرور خاطئة! لم يتم تقفيل الوردية.');
+            return;
+        }
+
+        if (confirm('سيتم حفظ كافة عمليات اليوم في الأرشيف وتصفير العداد لوردية جديدة.')) {
+            shiftArchive.unshift({ id: Date.now(), date: new Date().toLocaleDateString('ar-EG'), time: new Date().toLocaleTimeString('ar-EG'), total: shiftTotalEarnings, txCount: todayTransactions.length, transactions: todayTransactions });
+            shiftTotalEarnings = 0; todayTransactions = [];
+            saveState(); logActivity('🔐 تم تقفيل الخزينة وحفظ الوردية.'); renderDevices(); alert('تم التقفيل بنجاح!');
+        }
+    }
+
+    function formatSeconds(totalSecs) {
+        let hrs = Math.floor(totalSecs / 3600), mins = Math.floor((totalSecs % 3600) / 60), secs = totalSecs % 60;
+        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function logActivity(text) {
+        const logger = document.getElementById('activity-logs');
+        logger.innerHTML = `<div class="action-log">[${new Date().toLocaleTimeString('ar-EG')}] ${text}</div>` + logger.innerHTML;
+    }
+
+    function openHistoryModal() {
+        const tbody = document.getElementById('today-history-body');
+        tbody.innerHTML = todayTransactions.length ? todayTransactions.map(tx => `<tr><td>${tx.time}</td><td><span class="badge-type">${tx.device}</span></td><td>${tx.details}</td><td style="font-family: monospace;">${tx.duration}</td><td style="color: #34d399; font-weight: bold;">${tx.amount.toFixed(2)} ج.م</td></tr>`).join('') : `<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 20px;">لا توجد حركات مسجلة.</td></tr>`;
+
+        const arc = document.getElementById('archive-list-container');
+        arc.innerHTML = shiftArchive.length ? shiftArchive.map((s, idx) => `<div class="archive-card"><div class="archive-details"><h4>وردية #${shiftArchive.length - idx} - ${s.date}</h4><p>وقت التقفيل: ${s.time} | حركات: ${s.txCount}</p></div><div class="archive-total">${s.total.toFixed(2)} ج.م</div></div>`).join('') : `<div style="text-align:center; color: var(--text-muted); padding: 30px;">لا يوجد أرشيف.</div>`;
+        openModal('history-modal');
+    }
+    function switchTab(tabId, btnElem) {
+        document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active'); btnElem.classList.add('active');
+    }
+
+    function playAlarmSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const playBeep = (freq, startTime, duration) => {
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.5, startTime); gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(startTime); osc.stop(startTime + duration);
+            };
+            const now = ctx.currentTime;
+            playBeep(880, now, 0.25); playBeep(880, now + 0.3, 0.25); playBeep(880, now + 0.6, 0.25); playBeep(1200, now + 0.9, 0.5);
+        } catch (e) { console.log('Audio API syntax issue, fallback alert used.'); }
+    }
+</script>
+
+</body>
+</html>
