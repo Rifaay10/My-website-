@@ -299,10 +299,21 @@
         { id: 6, name: 'جهاز 6 (VIP)', type: 'PS5', rateSingle: 30, rateMulti: 40, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' }
     ];
 
-    let devices = JSON.parse(localStorage.getItem('ps_devices_state')) || defaultDevices;
+    // قراءة آمنة: لو الداتا المخزنة تالفة بنتجاهلها بدل ما الصفحة تقف
+    function safeLoad(key, fallback) {
+        try {
+            const v = JSON.parse(localStorage.getItem(key));
+            return v === null || v === undefined ? fallback : v;
+        } catch (e) { return fallback; }
+    }
+
+    let devices = safeLoad('ps_devices_state', defaultDevices);
+    if (!Array.isArray(devices) || !devices.length) devices = JSON.parse(JSON.stringify(defaultDevices));
     let shiftTotalEarnings = parseFloat(localStorage.getItem('ps_shift_total')) || 0;
-    let todayTransactions = JSON.parse(localStorage.getItem('ps_today_tx')) || [];
-    let shiftArchive = JSON.parse(localStorage.getItem('ps_shift_archive')) || [];
+    let todayTransactions = safeLoad('ps_today_tx', []);
+    let shiftArchive = safeLoad('ps_shift_archive', []);
+    if (!Array.isArray(todayTransactions)) todayTransactions = [];
+    if (!Array.isArray(shiftArchive)) shiftArchive = [];
 
     // متغيرات منع التعارض بين الحفظ والتحميل
     let pendingSaves = 0;
