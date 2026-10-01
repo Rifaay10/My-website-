@@ -640,15 +640,20 @@
                 if(data) {
                     let hasChanges = false;
                     if(data.devices && JSON.stringify(data.devices) !== JSON.stringify(devices)) {
-                        devices = data.devices;
+                        // حماية الأجهزة من المصفوفات المفقودة
+                        devices = data.devices.map(d => ({...d, orders: d.orders || [], note: d.note || ''}));
                         hasChanges = true;
                     }
                     if(data.shiftTotalEarnings !== undefined && data.shiftTotalEarnings !== shiftTotalEarnings) {
                         shiftTotalEarnings = data.shiftTotalEarnings;
                         hasChanges = true;
                     }
-                    if(data.todayTransactions) todayTransactions = data.todayTransactions;
-                    if(data.shiftArchive) shiftArchive = data.shiftArchive;
+                    if(data.todayTransactions !== undefined) {
+                        todayTransactions = data.todayTransactions || [];
+                    }
+                    if(data.shiftArchive !== undefined) {
+                        shiftArchive = data.shiftArchive || [];
+                    }
                     
                     if(hasChanges) {
                         localStorage.setItem('ps_devices_state', JSON.stringify(devices));
@@ -660,7 +665,8 @@
     }
 
     window.onload = function() {
-        devices = devices.map(d => ({...d, note: d.note || ''}));
+        // حماية مبدئية عند التحميل
+        devices = devices.map(d => ({...d, note: d.note || '', orders: d.orders || []}));
         renderDevices();
         startClock();
         updateHistoryCounters();
@@ -736,7 +742,11 @@
 
         devices.forEach(dev => {
             if(dev.status !== 'available') activeCount++;
-            let totalOrderCost = dev.orders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            
+            // إضافة حماية المصفوفة هنا لمنع العطل
+            let safeOrders = dev.orders || [];
+            let totalOrderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            
             let badgeClass = 'status-available', badgeText = 'متاح للعب', cardExtraClass = '';
 
             if(dev.status === 'occupied') { badgeClass = 'status-occupied'; badgeText = 'مشغول حالياً'; }
@@ -868,7 +878,10 @@
         }
         const qty = parseInt(document.getElementById('modal-product-qty').value) || 1;
         const dev = devices.find(d => d.id === id);
+        
+        if (!dev.orders) dev.orders = [];
         dev.orders.push({ name, price, qty });
+        
         saveState(); closeModal('order-modal'); logActivity(`☕ أضيف لـ ${dev.name}: ${name}`); renderDevices();
     }
 
@@ -893,7 +906,9 @@
         let currentHourlyRate = dev.playMode === 'single' ? dev.rateSingle : dev.rateMulti;
         let timeCost = (elapsed / 3600) * currentHourlyRate;
         if(elapsed > 0 && timeCost < 5) timeCost = 5.00;
-        let orderCost = dev.orders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        
+        let safeOrders = dev.orders || [];
+        let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
         
         document.getElementById('inv-start').innerText = new Date(dev.startTimestamp).toLocaleTimeString('ar-EG');
         document.getElementById('inv-duration').innerText = formatSeconds(Math.max(0, elapsed));
@@ -909,11 +924,13 @@
         const elapsed = getElapsedSeconds(dev);
         let timeCost = (elapsed / 3600) * (dev.playMode === 'single' ? dev.rateSingle : dev.rateMulti);
         if(elapsed > 0 && timeCost < 5) timeCost = 5.00;
-        let orderCost = dev.orders.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        
+        let safeOrders = dev.orders || [];
+        let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
         let total = timeCost + orderCost;
 
         shiftTotalEarnings += total;
-        let detailsStr = `لعب (${dev.playMode === 'single' ? 'فردي' : 'زوجي'})` + (dev.orders.length ? ` | طلبات` : '');
+        let detailsStr = `لعب (${dev.playMode === 'single' ? 'فردي' : 'زوجي'})` + (safeOrders.length ? ` | طلبات` : '');
         todayTransactions.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('ar-EG'), device: dev.name, details: detailsStr, duration: formatSeconds(Math.max(0, elapsed)), amount: total });
 
         dev.status = 'available'; dev.startTimestamp = null; dev.pausedDuration = 0; dev.pauseStartTimestamp = null; dev.orders = []; dev.alarmTriggered = false;
