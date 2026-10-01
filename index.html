@@ -6,296 +6,58 @@
     <title>منظومة إدارة مقهى البلايستيشن - أونلاين (Live Sync)</title>
     <style>
         :root {
-            --bg-main: #0f172a;
-            --bg-card: #1e293b;
-            --bg-input: #334155;
-            --border-color: #475569;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --info: #0ea5e9;
+            --bg-main: #0f172a; --bg-card: #1e293b; --bg-input: #334155; --border-color: #475569;
+            --text-main: #f8fafc; --text-muted: #94a3b8; --primary: #6366f1; --primary-hover: #4f46e5;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #0ea5e9;
         }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 20px; min-height: 100vh; }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        }
+        .app-container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 350px; gap: 25px; }
+        @media (max-width: 1024px) { .app-container { grid-template-columns: 1fr; } }
 
-        body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            padding: 20px;
-            min-height: 100vh;
-        }
+        header { grid-column: 1 / -1; background: linear-gradient(135deg, #1e1b4b, #311042); border: 1px solid #4338ca; padding: 20px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); margin-bottom: 10px; flex-wrap: wrap; gap: 15px; }
+        .header-title h1 { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 5px; background: linear-gradient(to left, #fff, #c7d2fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-title p { color: var(--text-muted); font-size: 14px; }
+        .sync-badge { background: rgba(16,185,129,0.2); color: #34d399; padding: 4px 10px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; }
+        .sync-badge.syncing { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .stats-summary { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .stat-box { background: rgba(255,255,255,0.05); padding: 10px 18px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.1); min-width: 120px; }
+        .stat-box span { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-box strong { font-size: 18px; color: #fff; }
+        .stat-box strong.highlight { color: #34d399; }
 
-        /* App Layout */
-        .app-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 25px;
-        }
+        .main-content { display: flex; flex-direction: column; gap: 20px; }
+        .section-title { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; color: #e2e8f0; }
+        .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 
-        @media (max-width: 1024px) {
-            .app-container {
-                grid-template-columns: 1fr;
-            }
-        }
+        .device-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .device-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -8px rgba(99,102,241,0.2); border-color: #6366f1; }
+        .device-card.time-up { border: 2px solid var(--danger); animation: pulse-border 1.5s infinite; background: linear-gradient(180deg, var(--bg-card) 0%, rgba(239,68,68,0.15) 100%); }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
 
-        /* Header / Stats Banner */
-        header {
-            grid-column: 1 / -1;
-            background: linear-gradient(135deg, #1e1b4b, #311042);
-            border: 1px solid #4338ca;
-            padding: 20px;
-            border-radius: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            font-weight: 800;
-            color: #fff;
-            margin-bottom: 5px;
-            background: linear-gradient(to left, #fff, #c7d2fe);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .header-title p {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .sync-badge {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            margin-top: 8px;
-        }
-
-        .sync-badge.syncing {
-            background: rgba(245, 158, 11, 0.2);
-            color: #fbbf24;
-        }
-
-        .stats-summary {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .stat-box {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 10px 18px;
-            border-radius: 12px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            min-width: 120px;
-        }
-
-        .stat-box span {
-            display: block;
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-
-        .stat-box strong {
-            font-size: 18px;
-            color: #fff;
-        }
-
-        .stat-box strong.highlight {
-            color: #34d399;
-        }
-
-        /* Main Section: Devices Grid */
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #e2e8f0;
-        }
-
-        .devices-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        /* Device Card Styling */
-        .device-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .device-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 20px -8px rgba(99, 102, 241, 0.2);
-            border-color: #6366f1;
-        }
-
-        .device-card.time-up {
-            border: 2px solid var(--danger);
-            animation: pulse-border 1.5s infinite;
-            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(239, 68, 68, 0.15) 100%);
-        }
-
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        .device-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-
-        .device-info h3 {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .device-type {
-            font-size: 12px;
-            padding: 2px 8px;
-            background-color: var(--bg-input);
-            border-radius: 20px;
-            color: var(--text-muted);
-            display: inline-block;
-        }
-
-        .status-badge {
-            font-size: 12px;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 20px;
-            text-transform: uppercase;
-        }
-
-        .status-available { background-color: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
-        .status-occupied { background-color: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
-        .status-paused { background-color: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .device-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .device-info h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .device-type { font-size: 12px; padding: 2px 8px; background-color: var(--bg-input); border-radius: 20px; color: var(--text-muted); display: inline-block; }
+        .status-badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; }
+        .status-available { background-color: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+        .status-occupied { background-color: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+        .status-paused { background-color: rgba(245,158,11,0.15); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
         .status-timeup { background-color: var(--danger); color: #fff; animation: blink 1s infinite; }
-
         @keyframes blink { 50% { opacity: 0.5; } }
 
-        /* Timer Section */
-        .timer-display {
-            font-size: 32px;
-            font-family: monospace;
-            font-weight: 700;
-            text-align: center;
-            margin: 15px 0;
-            color: #fff;
-            letter-spacing: 1px;
-            background: rgba(0,0,0,0.2);
-            padding: 10px;
-            border-radius: 8px;
-        }
+        .timer-display { font-size: 32px; font-family: monospace; font-weight: 700; text-align: center; margin: 15px 0; color: #fff; letter-spacing: 1px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
+        .device-card.time-up .timer-display { color: #fca5a5; background: rgba(239,68,68,0.2); }
+        .session-details { font-size: 13px; color: var(--text-muted); margin-bottom: 15px; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 8px; }
+        .session-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .session-row .val { color: #e2e8f0; font-weight: 500; }
 
-        .device-card.time-up .timer-display {
-            color: #fca5a5;
-            background: rgba(239, 68, 68, 0.2);
-        }
-
-        .session-details {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-            background: rgba(255,255,255,0.02);
-            padding: 8px;
-            border-radius: 8px;
-        }
-
-        .session-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-        }
-
-        .session-row .val {
-            color: #e2e8f0;
-            font-weight: 500;
-        }
-
-        /* Device Notes Section */
         .device-note { margin-bottom: 15px; }
-        .device-note textarea {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px dashed var(--border-color);
-            color: var(--text-main);
-            border-radius: 8px;
-            padding: 8px 10px;
-            font-size: 12px;
-            resize: vertical;
-            min-height: 40px;
-            transition: all 0.3s ease;
-        }
-        .device-note textarea:focus { outline: none; border-color: var(--primary); background: rgba(0, 0, 0, 0.2); }
+        .device-note textarea { width: 100%; background: rgba(255,255,255,0.05); border: 1px dashed var(--border-color); color: var(--text-main); border-radius: 8px; padding: 8px 10px; font-size: 12px; resize: vertical; min-height: 40px; transition: all 0.3s ease; }
+        .device-note textarea:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.2); }
 
-        /* Action Buttons */
-        .card-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .btn {
-            padding: 10px 14px;
-            border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
+        .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn { padding: 10px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-primary { background-color: var(--primary); color: white; }
         .btn-success { background-color: var(--success); color: white; }
         .btn-danger { background-color: var(--danger); color: white; }
@@ -304,66 +66,22 @@
         .btn-secondary { background-color: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); }
         .btn-full { grid-column: 1 / -1; }
 
-        /* Sidebar: Quick POS / Products & Orders */
-        .sidebar {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            height: fit-content;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .product-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-            padding-left: 5px;
-        }
-
-        .product-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: var(--bg-main);
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-        }
-
+        .sidebar { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 20px; height: fit-content; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .product-list { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; padding-left: 5px; }
+        .product-item { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-main); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-color); }
         .product-info h4 { font-size: 14px; font-weight: 600; }
         .product-info p { font-size: 12px; color: var(--text-muted); }
         .btn-add-fast { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
 
-        /* Modals & Dialogs */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(0, 0, 0, 0.75); display: flex;
-            align-items: center; justify-content: center; z-index: 1000;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 20px;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; padding: 20px; }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
-
-        .modal-content {
-            background-color: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: 16px; width: 100%; max-width: 480px; padding: 25px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); max-height: 90vh; overflow-y: auto;
-        }
+        .modal-content { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; width: 100%; max-width: 480px; padding: 25px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
         .modal-content.large-modal { max-width: 850px; }
-
         .modal-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .modal-header h2 { font-size: 20px; font-weight: 700; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 14px; margin-bottom: 6px; color: var(--text-muted); }
-        .form-control {
-            width: 100%; padding: 10px; background-color: var(--bg-input);
-            border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 14px;
-        }
+        .form-control { width: 100%; padding: 10px; background-color: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 14px; }
         .form-control:focus { outline: none; border-color: var(--primary); }
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
@@ -381,7 +99,7 @@
         .tab-content.active { display: block; }
         .history-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: right; margin-top: 10px; }
         .history-table th, .history-table td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .badge-type { padding: 3px 8px; border-radius: 12px; font-size: 11px; background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+        .badge-type { padding: 3px 8px; border-radius: 12px; font-size: 11px; background: rgba(99,102,241,0.2); color: #818cf8; }
         .archive-card { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
@@ -451,7 +169,7 @@
                 <div class="action-log">تم تشغيل النظام وجاهز لتسجيل الحركات.</div>
             </div>
         </div>
-        
+
         <button class="btn btn-secondary btn-full" onclick="resetShift()">🔒 تقفيل وحفظ الوردية الحالية في الأرشيف</button>
     </aside>
 </div>
@@ -459,9 +177,7 @@
 <!-- Modals -->
 <div class="modal-overlay" id="start-modal">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="start-modal-title">بدء جلسة جديدة</h2>
-        </div>
+        <div class="modal-header"><h2 id="start-modal-title">بدء جلسة جديدة</h2></div>
         <input type="hidden" id="start-device-id">
         <div class="form-group">
             <label>وضع اللعب</label>
@@ -490,9 +206,7 @@
 
 <div class="modal-overlay" id="order-modal">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2>إضافة طلبات وضيافة للجهاز</h2>
-        </div>
+        <div class="modal-header"><h2>إضافة طلبات وضيافة للجهاز</h2></div>
         <input type="hidden" id="order-device-id">
         <div class="form-group">
             <label>اختر المنتج من البوفيه</label>
@@ -527,9 +241,7 @@
 
 <div class="modal-overlay" id="checkout-modal">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="checkout-title">حساب وتجنيب الشيك</h2>
-        </div>
+        <div class="modal-header"><h2 id="checkout-title">حساب وتجنيب الشيك</h2></div>
         <input type="hidden" id="checkout-device-id">
         <div class="invoice-box">
             <div class="invoice-line"><span>وقت البدء:</span><span id="inv-start">-</span></div>
@@ -561,9 +273,7 @@
             </div>
             <div style="overflow-x: auto;">
                 <table class="history-table">
-                    <thead>
-                        <tr><th>الوقت</th><th>النوع / الجهاز</th><th>التفاصيل والمشروبات</th><th>المدة</th><th>المبلغ المحصل</th></tr>
-                    </thead>
+                    <thead><tr><th>الوقت</th><th>النوع / الجهاز</th><th>التفاصيل والمشروبات</th><th>المدة</th><th>المبلغ المحصل</th></tr></thead>
                     <tbody id="today-history-body"></tbody>
                 </table>
             </div>
@@ -578,12 +288,8 @@
 </div>
 
 <script>
-    // -----------------------------------------------------
-    // رابط قاعدة البيانات المباشر للمزامنة
-    // -----------------------------------------------------
     const FIREBASE_DB_URL = "https://pes-ya-man-default-rtdb.europe-west1.firebasedatabase.app/ps_data.json";
-    
-    // System Default Devices
+
     const defaultDevices = [
         { id: 1, name: 'جهاز 1', type: 'PS4', rateSingle: 20, rateMulti: 30, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' },
         { id: 2, name: 'جهاز 2', type: 'PS4', rateSingle: 20, rateMulti: 30, status: 'available', startTimestamp: null, pausedDuration: 0, pauseStartTimestamp: null, orders: [], playMode: 'single', limitType: 'open', limitSeconds: 0, alarmTriggered: false, note: '' },
@@ -598,19 +304,21 @@
     let todayTransactions = JSON.parse(localStorage.getItem('ps_today_tx')) || [];
     let shiftArchive = JSON.parse(localStorage.getItem('ps_shift_archive')) || [];
 
+    // متغيرات منع التعارض بين الحفظ والتحميل
+    let pendingSaves = 0;
+    let lastLocalChange = 0;
+
     function saveState() {
+        lastLocalChange = Date.now();
+        pendingSaves++;
+
         localStorage.setItem('ps_devices_state', JSON.stringify(devices));
         localStorage.setItem('ps_shift_total', shiftTotalEarnings.toString());
         localStorage.setItem('ps_today_tx', JSON.stringify(todayTransactions));
         localStorage.setItem('ps_shift_archive', JSON.stringify(shiftArchive));
         updateHistoryCounters();
 
-        const dataToSync = {
-            devices: devices,
-            shiftTotalEarnings: shiftTotalEarnings,
-            todayTransactions: todayTransactions,
-            shiftArchive: shiftArchive
-        };
+        const dataToSync = { devices, shiftTotalEarnings, todayTransactions, shiftArchive };
 
         const syncBadge = document.getElementById('sync-status');
         syncBadge.className = 'sync-badge syncing';
@@ -622,70 +330,88 @@
             body: JSON.stringify(dataToSync)
         }).then(() => {
             syncBadge.className = 'sync-badge';
-            syncBadge.innerText = '☁️️ تم الحفظ أونلاين';
-        }).catch(e => {
+            syncBadge.innerText = '☁️ تم الحفظ أونلاين';
+        }).catch(() => {
             syncBadge.className = 'sync-badge syncing';
             syncBadge.innerText = '❌ خطأ في النت';
+        }).finally(() => {
+            pendingSaves--;
+            lastLocalChange = Date.now();
         });
     }
 
-    // الدرع الواقي: تنظيف الداتا الجاية من فايربيز قبل رسمها
+    // تحويل أي داتا جاية من فايربيز لمصفوفة سليمة (والفاضي يبقى [])
+    function toArr(x) {
+        if (!x) return [];
+        return (Array.isArray(x) ? x : Object.values(x)).filter(i => i !== null);
+    }
+
     function loadStateFromServer() {
+        // لا تحمّل لو فيه حفظ شغال أو تعديل حصل من أقل من 5 ثواني
+        if (pendingSaves > 0) return;
+        if (Date.now() - lastLocalChange < 5000) return;
+
+        // لا تحمّل لو المستخدم بيكتب أو فاتح نافذة
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.tagName === 'SELECT')) return;
+        if (document.querySelector('.modal-overlay.active')) return;
+
         fetch(FIREBASE_DB_URL)
             .then(res => res.json())
             .then(data => {
-                if(data) {
-                    let hasChanges = false;
-                    
-                    if(data.devices) {
-                        // حماية قوية: إجبار فايربيز يرجع الداتا كمصفوفة حتى لو كانت متلغبطة
-                        let serverDevices = Array.isArray(data.devices) ? data.devices : Object.values(data.devices);
-                        serverDevices = serverDevices.filter(d => d !== null);
-                        
-                        if(JSON.stringify(serverDevices) !== JSON.stringify(devices)) {
-                            devices = serverDevices.map(d => ({...d, orders: d.orders || [], note: d.note || ''}));
-                            hasChanges = true;
-                        }
-                    }
+                if (!data) return;
+                // لو حصل تعديل أثناء انتظار الرد، تجاهل الرد
+                if (pendingSaves > 0 || Date.now() - lastLocalChange < 5000) return;
 
-                    if(data.shiftTotalEarnings !== undefined && data.shiftTotalEarnings !== shiftTotalEarnings) {
-                        shiftTotalEarnings = data.shiftTotalEarnings;
-                        hasChanges = true;
-                    }
+                let changed = false;
 
-                    if(data.todayTransactions !== undefined) {
-                        let tx = Array.isArray(data.todayTransactions) ? data.todayTransactions : Object.values(data.todayTransactions);
-                        todayTransactions = tx.filter(t => t !== null);
-                        hasChanges = true;
-                    }
-
-                    if(data.shiftArchive !== undefined) {
-                        let arc = Array.isArray(data.shiftArchive) ? data.shiftArchive : Object.values(data.shiftArchive);
-                        shiftArchive = arc.filter(t => t !== null);
-                        hasChanges = true;
-                    }
-                    
-                    if(hasChanges) {
-                        localStorage.setItem('ps_devices_state', JSON.stringify(devices));
-                        renderDevices();
-                        updateHistoryCounters();
-                    }
+                const serverDevices = toArr(data.devices)
+                    .map(d => ({ ...d, orders: toArr(d.orders), note: d.note || '' }));
+                if (serverDevices.length && JSON.stringify(serverDevices) !== JSON.stringify(devices)) {
+                    devices = serverDevices;
+                    changed = true;
                 }
-            }).catch(e => console.log('تعذر الاتصال بالسيرفر'));
+
+                const serverTotal = data.shiftTotalEarnings || 0;
+                if (serverTotal !== shiftTotalEarnings) {
+                    shiftTotalEarnings = serverTotal;
+                    changed = true;
+                }
+
+                const serverTx = toArr(data.todayTransactions);
+                if (JSON.stringify(serverTx) !== JSON.stringify(todayTransactions)) {
+                    todayTransactions = serverTx;
+                    changed = true;
+                }
+
+                const serverArc = toArr(data.shiftArchive);
+                if (JSON.stringify(serverArc) !== JSON.stringify(shiftArchive)) {
+                    shiftArchive = serverArc;
+                    changed = true;
+                }
+
+                if (changed) {
+                    localStorage.setItem('ps_devices_state', JSON.stringify(devices));
+                    localStorage.setItem('ps_shift_total', shiftTotalEarnings.toString());
+                    localStorage.setItem('ps_today_tx', JSON.stringify(todayTransactions));
+                    localStorage.setItem('ps_shift_archive', JSON.stringify(shiftArchive));
+                    renderDevices();
+                    updateHistoryCounters();
+                }
+            }).catch(() => console.log('تعذر الاتصال بالسيرفر'));
     }
 
     window.onload = function() {
-        // حماية مبدئية عند التحميل
         if (!Array.isArray(devices)) devices = defaultDevices;
         devices = devices.map(d => ({...d, note: d.note || '', orders: d.orders || []}));
-        
+
         renderDevices();
         startClock();
         updateHistoryCounters();
-        
+
         loadStateFromServer();
         setInterval(updateActiveTimers, 1000);
-        setInterval(loadStateFromServer, 10000); 
+        setInterval(loadStateFromServer, 10000);
     };
 
     function calculateTimeByAmount() {
@@ -705,7 +431,7 @@
     }
 
     function resetDevicesConfig() {
-        if(confirm("إعادة تعيين أسعار الأجهزة للوضع الافتراضي ومسح التعليقات؟")) {
+        if (confirm("إعادة تعيين أسعار الأجهزة للوضع الافتراضي ومسح التعليقات؟")) {
             devices = JSON.parse(JSON.stringify(defaultDevices));
             saveState();
             renderDevices();
@@ -735,7 +461,7 @@
 
     function updateDeviceNote(id, value) {
         const dev = devices.find(d => d.id === id);
-        if(dev) {
+        if (dev) {
             dev.note = value;
             saveState();
         }
@@ -744,8 +470,7 @@
     function renderDevices() {
         const container = document.getElementById('devices-container');
         if (!container) return;
-        
-        // حماية إضافية لو المتصفح خزن البيانات غلط
+
         if (!Array.isArray(devices)) {
             devices = JSON.parse(JSON.stringify(defaultDevices));
         }
@@ -755,16 +480,16 @@
 
         devices.forEach(dev => {
             if (!dev) return;
-            if(dev.status !== 'available') activeCount++;
-            
+            if (dev.status !== 'available') activeCount++;
+
             let safeOrders = dev.orders || [];
             let totalOrderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
-            
+
             let badgeClass = 'status-available', badgeText = 'متاح للعب', cardExtraClass = '';
 
-            if(dev.status === 'occupied') { badgeClass = 'status-occupied'; badgeText = 'مشغول حالياً'; }
-            if(dev.status === 'paused') { badgeClass = 'status-paused'; badgeText = 'إيقاف مؤقت'; }
-            if(dev.status === 'timeup') { badgeClass = 'status-timeup'; badgeText = '⏰ انتهى الوقت!'; cardExtraClass = 'time-up'; }
+            if (dev.status === 'occupied') { badgeClass = 'status-occupied'; badgeText = 'مشغول حالياً'; }
+            if (dev.status === 'paused') { badgeClass = 'status-paused'; badgeText = 'إيقاف مؤقت'; }
+            if (dev.status === 'timeup') { badgeClass = 'status-timeup'; badgeText = '⏰ انتهى الوقت!'; cardExtraClass = 'time-up'; }
 
             let elapsed = getElapsedSeconds(dev);
             let timeString = formatSeconds(Math.max(0, elapsed));
@@ -789,15 +514,15 @@
                     <div class="card-actions">
             `;
 
-            if(dev.status === 'available') {
+            if (dev.status === 'available') {
                 cardHtml += `<button class="btn btn-success btn-full" onclick="openStartModal(${dev.id})">تشغيل وإيجار</button>`;
-            } else if(dev.status === 'occupied') {
+            } else if (dev.status === 'occupied') {
                 cardHtml += `
                     <button class="btn btn-warning" onclick="pauseDevice(${dev.id})">⏸ مؤقت</button>
                     <button class="btn btn-secondary" onclick="openOrderModal(${dev.id})">☕ طلبات</button>
                     <button class="btn btn-danger btn-full" style="margin-top:8px;" onclick="openCheckoutModal(${dev.id})">🛑 إنهاء وحساب</button>
                 `;
-            } else if(dev.status === 'paused' || dev.status === 'timeup') {
+            } else if (dev.status === 'paused' || dev.status === 'timeup') {
                 cardHtml += `
                     <button class="btn btn-success" onclick="resumeDevice(${dev.id})">▶️ استئناف</button>
                     <button class="btn btn-secondary" onclick="openOrderModal(${dev.id})">☕ طلبات</button>
@@ -814,21 +539,21 @@
     function updateActiveTimers() {
         let stateModified = false;
         devices.forEach(dev => {
-            if(dev && (dev.status === 'occupied' || dev.status === 'timeup')) {
+            if (dev && (dev.status === 'occupied' || dev.status === 'timeup')) {
                 const elapsed = getElapsedSeconds(dev);
-                if(dev.limitType === 'fixed' && elapsed >= dev.limitSeconds && !dev.alarmTriggered) {
+                if (dev.limitType === 'fixed' && elapsed >= dev.limitSeconds && !dev.alarmTriggered) {
                     dev.status = 'timeup';
                     dev.alarmTriggered = true;
-                    dev.pauseStartTimestamp = Date.now(); 
+                    dev.pauseStartTimestamp = Date.now();
                     stateModified = true;
                     playAlarmSound();
                     logActivity(`⏰ انتهى الوقت المحدد لـ ${dev.name}!`);
                 }
                 const card = document.getElementById(`card-${dev.id}`);
-                if(card) card.querySelector('.timer-display').innerText = formatSeconds(Math.max(0, elapsed));
+                if (card) card.querySelector('.timer-display').innerText = formatSeconds(Math.max(0, elapsed));
             }
         });
-        if(stateModified) { saveState(); renderDevices(); }
+        if (stateModified) { saveState(); renderDevices(); }
     }
 
     function openStartModal(id) {
@@ -846,13 +571,13 @@
         const mode = document.getElementById('play-mode').value;
         const limitType = document.getElementById('time-limit-type').value;
         const dev = devices.find(d => d.id === id);
-        
+
         dev.status = 'occupied'; dev.playMode = mode; dev.limitType = limitType;
         dev.startTimestamp = Date.now(); dev.pausedDuration = 0; dev.pauseStartTimestamp = null;
         dev.orders = []; dev.alarmTriggered = false;
 
-        if(limitType === 'fixed') dev.limitSeconds = (parseInt(document.getElementById('fixed-minutes').value) || 60) * 60;
-        
+        if (limitType === 'fixed') dev.limitSeconds = (parseInt(document.getElementById('fixed-minutes').value) || 60) * 60;
+
         saveState(); closeModal('start-modal'); logActivity(`🏁 تم فتح ${dev.name}`); renderDevices();
     }
 
@@ -871,7 +596,7 @@
     }
 
     function openOrderModal(id) {
-        document.getElementById('order-device-id').value = id; openModal('order-modal'); toggleCustomOrderInput(); 
+        document.getElementById('order-device-id').value = id; openModal('order-modal'); toggleCustomOrderInput();
     }
 
     function toggleCustomOrderInput() {
@@ -891,10 +616,10 @@
         }
         const qty = parseInt(document.getElementById('modal-product-qty').value) || 1;
         const dev = devices.find(d => d.id === id);
-        
+
         if (!Array.isArray(dev.orders)) dev.orders = [];
         dev.orders.push({ name, price, qty });
-        
+
         saveState(); closeModal('order-modal'); logActivity(`☕ أضيف لـ ${dev.name}: ${name}`); renderDevices();
     }
 
@@ -918,11 +643,11 @@
         const elapsed = getElapsedSeconds(dev);
         let currentHourlyRate = dev.playMode === 'single' ? dev.rateSingle : dev.rateMulti;
         let timeCost = (elapsed / 3600) * currentHourlyRate;
-        if(elapsed > 0 && timeCost < 5) timeCost = 5.00;
-        
+        if (elapsed > 0 && timeCost < 5) timeCost = 5.00;
+
         let safeOrders = Array.isArray(dev.orders) ? dev.orders : [];
         let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
-        
+
         document.getElementById('inv-start').innerText = new Date(dev.startTimestamp).toLocaleTimeString('ar-EG');
         document.getElementById('inv-duration').innerText = formatSeconds(Math.max(0, elapsed));
         document.getElementById('inv-time-cost').innerText = `${timeCost.toFixed(2)} ج.م`;
@@ -936,8 +661,8 @@
         const dev = devices.find(d => d.id === id);
         const elapsed = getElapsedSeconds(dev);
         let timeCost = (elapsed / 3600) * (dev.playMode === 'single' ? dev.rateSingle : dev.rateMulti);
-        if(elapsed > 0 && timeCost < 5) timeCost = 5.00;
-        
+        if (elapsed > 0 && timeCost < 5) timeCost = 5.00;
+
         let safeOrders = Array.isArray(dev.orders) ? dev.orders : [];
         let orderCost = safeOrders.reduce((sum, item) => sum + (item.price * item.qty), 0);
         let total = timeCost + orderCost;
@@ -951,15 +676,15 @@
     }
 
     function resetShift() {
-        if(todayTransactions.length === 0 && shiftTotalEarnings === 0) return alert('الوردية فارغة!');
-        
+        if (todayTransactions.length === 0 && shiftTotalEarnings === 0) return alert('الوردية فارغة!');
+
         const pass = prompt('يرجى إدخال كلمة المرور لتقفيل الوردية:');
         if (pass !== 'Madh771979') {
             alert('كلمة المرور خاطئة! لم يتم تقفيل الوردية.');
-            return; 
+            return;
         }
 
-        if(confirm('سيتم حفظ كافة عمليات اليوم في الأرشيف وتصفير العداد لوردية جديدة.')) {
+        if (confirm('سيتم حفظ كافة عمليات اليوم في الأرشيف وتصفير العداد لوردية جديدة.')) {
             shiftArchive.unshift({ id: Date.now(), date: new Date().toLocaleDateString('ar-EG'), time: new Date().toLocaleTimeString('ar-EG'), total: shiftTotalEarnings, txCount: todayTransactions.length, transactions: todayTransactions });
             shiftTotalEarnings = 0; todayTransactions = [];
             saveState(); logActivity('🔐 تم تقفيل الخزينة وحفظ الوردية.'); renderDevices(); alert('تم التقفيل بنجاح!');
@@ -970,19 +695,18 @@
         let hrs = Math.floor(totalSecs / 3600), mins = Math.floor((totalSecs % 3600) / 60), secs = totalSecs % 60;
         return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
-    
+
     function openModal(id) { document.getElementById(id).classList.add('active'); }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     function logActivity(text) {
         const logger = document.getElementById('activity-logs');
         logger.innerHTML = `<div class="action-log">[${new Date().toLocaleTimeString('ar-EG')}] ${text}</div>` + logger.innerHTML;
     }
-    
-    // History Functions
+
     function openHistoryModal() {
         const tbody = document.getElementById('today-history-body');
         tbody.innerHTML = todayTransactions.length ? todayTransactions.map(tx => `<tr><td>${tx.time}</td><td><span class="badge-type">${tx.device}</span></td><td>${tx.details}</td><td style="font-family: monospace;">${tx.duration}</td><td style="color: #34d399; font-weight: bold;">${tx.amount.toFixed(2)} ج.م</td></tr>`).join('') : `<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 20px;">لا توجد حركات مسجلة.</td></tr>`;
-        
+
         const arc = document.getElementById('archive-list-container');
         arc.innerHTML = shiftArchive.length ? shiftArchive.map((s, idx) => `<div class="archive-card"><div class="archive-details"><h4>وردية #${shiftArchive.length - idx} - ${s.date}</h4><p>وقت التقفيل: ${s.time} | حركات: ${s.txCount}</p></div><div class="archive-total">${s.total.toFixed(2)} ج.م</div></div>`).join('') : `<div style="text-align:center; color: var(--text-muted); padding: 30px;">لا يوجد أرشيف.</div>`;
         openModal('history-modal');
@@ -991,7 +715,7 @@
         document.querySelectorAll('.tab-content, .tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).classList.add('active'); btnElem.classList.add('active');
     }
-    
+
     function playAlarmSound() {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
